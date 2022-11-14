@@ -1,21 +1,23 @@
-﻿using System;
+﻿using SudokuChecker.Functionalities.Extensions;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
-namespace WpfApp.Functionalities.Implementations
+namespace SudokuChecker.Functionalities.Implementations
 {
-    class Ps_Szurkites : FunctionBase, FunctionInterface
+    public class Ps_Negalas : FunctionBase, FunctionInterface
     {
-        private ConcurrentDictionary<int, byte> lookUpTable;
+        private ConcurrentDictionary<byte, byte> lookUpTable;
 
-        public Ps_Szurkites(Logger logger) : base(ProgramFunction.Ps_Szurkites, logger)
+        public Ps_Negalas(Logger logger) : base(ProgramFunction.Ps_Negalas, logger) 
         {
-            this.lookUpTable = new ConcurrentDictionary<int, byte>();
+            this.lookUpTable = new ConcurrentDictionary<byte, byte>();
         }
 
         public Bitmap ExecuteFunction(Bitmap inputImage)
@@ -48,12 +50,9 @@ namespace WpfApp.Functionalities.Implementations
                         byte oldGreen = inputCurrentLine[x + 1];
                         byte oldRed = inputCurrentLine[x + 2];
 
-                        int szum = oldBlue + oldGreen + oldRed;
-                        byte value = this.lookUpTable[szum];
-
-                        outputCurrentLine[x] = value;
-                        outputCurrentLine[x + 1] = value;
-                        outputCurrentLine[x + 2] = value;
+                        outputCurrentLine[x] = this.lookUpTable[oldBlue];
+                        outputCurrentLine[x + 1] = this.lookUpTable[oldGreen];
+                        outputCurrentLine[x + 2] = this.lookUpTable[oldRed];
                     }
                 });
                 inputImage.UnlockBits(inputBitmapData);
@@ -61,13 +60,13 @@ namespace WpfApp.Functionalities.Implementations
             }
 
             // NOT parallel solution:
-
+            
             /*for (int i = 0; i < imageWidth; i++)
             {
                 for (int j = 0; j < imageHeight; j++)
                 {
                     Color currentPixel = inputImage.GetPixel(i, j);
-                    Color newPixel = GreyScaling(currentPixel);
+                    Color newPixel = this.Negate(currentPixel);
                     newImage.SetPixel(i, j, newPixel);
                 }
             }*/
@@ -78,20 +77,21 @@ namespace WpfApp.Functionalities.Implementations
 
             return newImage;
         }
-        private Color GreyScaling(Color pixel)
+
+        private Color Negate(Color pixel)
         {
-            return Color.FromArgb(pixel.A,
-                 this.lookUpTable[pixel.R],
-                 this.lookUpTable[pixel.G],
-                 this.lookUpTable[pixel.B]);
+            return Color.FromArgb(pixel.A, 
+                this.lookUpTable[pixel.R], 
+                this.lookUpTable[pixel.G],
+                this.lookUpTable[pixel.B]);
         }
 
         private void FillLookUpTable()
         {
-            for (int i = 0; i < 766; i++)
+            for (int i = 0; i < 256; i++)
             {
-                int value = i/3;
-                this.lookUpTable.TryAdd(i, (byte)value);
+                int value = 255-i;
+                this.lookUpTable.TryAdd((byte)i, (byte)value);
             }
         }
     }

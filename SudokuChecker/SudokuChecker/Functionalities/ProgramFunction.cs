@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace WpfApp.Functionalities
+namespace SudokuChecker.Functionalities
 {
     public enum ProgramFunction
     {

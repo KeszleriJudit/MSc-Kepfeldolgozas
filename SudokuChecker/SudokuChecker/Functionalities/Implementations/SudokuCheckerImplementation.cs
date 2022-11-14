@@ -1,25 +1,36 @@
-﻿using IronOcr;
+﻿using Emgu.CV;
+using Emgu.CV.Cuda;
+using Emgu.CV.CvEnum;
+using Emgu.CV.Reg;
+using Emgu.CV.Structure;
+using Emgu.CV.Util;
+using IronOcr;
+using SudokuChecker.Functionalities.Extensions;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace WpfApp.Functionalities.Implementations
+namespace SudokuChecker.Functionalities.Implementations
 {
-    public class SudokuChecker : FunctionBase, FunctionInterface
+    public class SudokuCheckerImplementation : FunctionBase, FunctionInterface
     {
         private ConcurrentDictionary<int, byte> lookUpTable;
+        private ConcurrentDictionary<byte, byte> lookUpTableForNegate;
         private int imageWidth;
         private int imageHeight;
 
-        public SudokuChecker(Logger logger): base(ProgramFunction.SudokuChecker, logger)
+        public SudokuCheckerImplementation(Logger logger): base(ProgramFunction.SudokuChecker, logger)
         {
             this.lookUpTable = new ConcurrentDictionary<int, byte>();
+            this.lookUpTableForNegate = new ConcurrentDictionary<byte, byte>();
         }
 
         public Bitmap ExecuteFunction(Bitmap inputImage)
@@ -30,12 +41,50 @@ namespace WpfApp.Functionalities.Implementations
 
             this.imageWidth = inputImage.Width;
             this.imageHeight = inputImage.Height;
-            Bitmap newImage = greyScaling(inputImage);
-            newImage = gausBlur(newImage);
-            //körbevágás sarokpont + éldetektor
-            newImage = contrastStreching(newImage);
 
-            var Ocr = new IronTesseract();
+            RunPythonScript("contours.py");
+
+            Bitmap greyscaledImage = greyScaling(inputImage);
+            Bitmap gausBlurredImage = gausBlur(greyscaledImage);
+            Bitmap contrastStrechedImage = contrastStreching(gausBlurredImage);
+            //körbevágás sarokpont + éldetektor
+
+            //Mat newImage5 = new Mat();
+            //Mat matrixImage = ConvertBitmapToMatrix(inputImage);
+            //Image<Gray, byte> matImage = matrixImage.ToImage<Gray, byte>().ThresholdBinary(new Gray(100), new Gray(255));
+            //Image<Gray, byte> negatedImage = matImage.Not();
+            //Image<Bgra, byte> cannyOutput = new Image<Bgra, byte>(inputImage.Width, inputImage.Height);
+            //CvInvoke.Canny(matImage, cannyOutput, 255/3, 255);
+
+            //VectorOfVectorOfPoint contours = new VectorOfVectorOfPoint();
+            //Mat hier = new Mat();
+
+            ///Image<Gray, byte> output = new Image<Gray, byte>(this.imageWidth, this.imageHeight, new Gray(0));
+
+            //CvInvoke.FindContours(matImage, contours, hier, RetrType.External, ChainApproxMethod.ChainApproxSimple);
+            //Image<Bgra, byte> negatedImage2 = matrixImage.ToImage<Bgra, byte>();
+            //Image<Gray, byte> negatedImage3 = matImage.Not();
+            //Image<Bgra, byte> output = negatedImage3.Convert<Bgra, byte>();
+            //CvInvoke.DrawContours(output, contours, -1, new MCvScalar(255, 0, 0));
+
+            /*VectorOfPoint contour = new VectorOfPoint();
+            double maxArea;
+            (contour, maxArea) = findBiggestContour(contours);*/
+            //VectorOfPoint sortedContour = contour;
+            //CvInvoke.Sort(contour, sortedContour, Emgu.CV.CvEnum.SortFlags.SortDescending);
+            //CvInvoke.DrawContours(negatedImage2, contour, -1, new MCvScalar(100, 200, 255), 25);
+
+            //Mat outputMat = output.Mat;
+            //Bitmap outputImage = ConvertMatrixToBitmap(outputMat);
+
+            //Bitmap contrastStrechedImage = contrastStreching(newImage2);
+            //Bitmap negatedImage = negateImage(newImage2);
+
+            /**
+             * Code below is for the processed image to read the numbers
+             */
+
+            /*var Ocr = new IronTesseract();
             // Hundreds of languages available 
             Ocr.Language = OcrLanguage.English;
             using (var Input = new OcrInput())
@@ -48,13 +97,13 @@ namespace WpfApp.Functionalities.Implementations
                 Console.WriteLine(Result.Text);
                 // Explore the OcrResult using IntelliSense
                 Console.WriteLine("Finished");
-            }
+            }*/
 
             this.StopTimer();
             this.LogFunctionResult();
             this.ResetTimer();
 
-            return newImage;
+            return inputImage;
         }
 
         private void FillLookUpTable()
@@ -282,6 +331,123 @@ namespace WpfApp.Functionalities.Implementations
             newImage.UnlockBits(destData);
 
             return newImage;
+        }
+
+        private Bitmap negateImage(Bitmap inputImage)
+        {
+            Bitmap newImage = new Bitmap(this.imageWidth, this.imageHeight);
+            this.lookUpTableForNegate.Clear();
+            this.FillLookUpTableForNegate();
+
+            unsafe
+            {
+                BitmapData inputBitmapData = inputImage.LockBits(new Rectangle(0, 0, this.imageWidth, this.imageHeight), ImageLockMode.ReadOnly, inputImage.PixelFormat);
+                BitmapData outputBitmapData = newImage.LockBits(new Rectangle(0, 0, this.imageWidth, this.imageHeight), ImageLockMode.WriteOnly, inputImage.PixelFormat);
+
+                int bytesPerPixel = Bitmap.GetPixelFormatSize(inputImage.PixelFormat) / 8;
+                int widthInBytes = this.imageWidth * bytesPerPixel;
+                byte* inputPtrFirstPixel = (byte*)inputBitmapData.Scan0;
+                byte* outputPtrFirstPixel = (byte*)outputBitmapData.Scan0;
+
+                /*Parallel.For(0, this.imageHeight, y =>
+                {
+                    byte* inputCurrentLine = inputPtrFirstPixel + (y * inputBitmapData.Stride);
+                    byte* outputCurrentLine = outputPtrFirstPixel + (y * outputBitmapData.Stride);
+                    for (int x = 0; x < widthInBytes; x = x + bytesPerPixel)
+                    {
+                        byte oldBlue = inputCurrentLine[x];
+                        byte oldGreen = inputCurrentLine[x + 1];
+                        byte oldRed = inputCurrentLine[x + 2];
+
+                        outputCurrentLine[x] = this.lookUpTableForNegate[oldBlue];
+                        outputCurrentLine[x + 1] = this.lookUpTableForNegate[oldGreen];
+                        outputCurrentLine[x + 2] = this.lookUpTableForNegate[oldRed];
+                    }
+                });*/
+                for (int y = 0; y < this.imageHeight; y++)
+                {
+                    byte* inputCurrentLine = inputPtrFirstPixel + (y * inputBitmapData.Stride);
+                    byte* outputCurrentLine = outputPtrFirstPixel + (y * outputBitmapData.Stride);
+                    for (int x = 0; x < widthInBytes; x = x + bytesPerPixel)
+                    {
+                        byte oldBlue = inputCurrentLine[x];
+                        byte oldGreen = inputCurrentLine[x + 1];
+                        byte oldRed = inputCurrentLine[x + 2];
+
+                        outputCurrentLine[x] = this.lookUpTableForNegate[oldBlue];
+                        outputCurrentLine[x + 1] = this.lookUpTableForNegate[oldGreen];
+                        outputCurrentLine[x + 2] = this.lookUpTableForNegate[oldRed];
+                    }
+                }
+                inputImage.UnlockBits(inputBitmapData);
+                newImage.UnlockBits(outputBitmapData);
+            }
+            return newImage;
+        }
+
+        private void FillLookUpTableForNegate()
+        {
+            for (int i = 0; i < 256; i++)
+            {
+                int value = 255 - i;
+                this.lookUpTableForNegate.TryAdd((byte)i, (byte)value);
+            }
+        }
+
+        public Mat ConvertBitmapToMatrix(Bitmap image)
+        {
+            return BitmapExtension.ToMat(image);
+        }
+
+        public Bitmap ConvertMatrixToBitmap(Mat image)
+        {
+            return BitmapExtension.ToBitmap(image);
+        }
+
+        public (VectorOfPoint, double) findBiggestContour(VectorOfVectorOfPoint contours)
+        {
+            VectorOfPoint biggest = new VectorOfPoint();
+            double max_area = 0;
+  
+            for (int i = 0; i < contours.Size; i++)
+            {
+                VectorOfPoint contour = contours[i];
+                VectorOfPoint approx = new VectorOfPoint();
+                CvInvoke.ApproxPolyDP(contour, approx, CvInvoke.ArcLength(contour, true) * .05, true);
+                double area = CvInvoke.ContourArea(approx);
+
+                if (area > 50)
+                {
+                    double peri = CvInvoke.ArcLength(contour, true);
+                    CvInvoke.ApproxPolyDP(contour, approx, 0.02 * peri, true);
+                    if (area > max_area && approx.Length == 4)
+                    {
+                        biggest = approx;
+                        max_area = area;
+                    }
+                }
+            }
+
+            return (biggest, max_area);
+        }
+
+        public void RunPythonScript(string fileName)
+        {
+            
+            Process p = new Process();
+            p.StartInfo.FileName = @"C:\Windows\System32\cmd.exe";
+            p.StartInfo.WorkingDirectory = $@"{Directory.GetCurrentDirectory()}";
+            p.StartInfo.Arguments = $@"/c python {fileName}";
+            p.StartInfo.UseShellExecute = false;
+            p.StartInfo.RedirectStandardOutput = true;
+            p.StartInfo.CreateNoWindow = true;
+            p.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
+
+            p.Start();
+
+            string output = p.StandardOutput.ReadToEnd();
+
+            p.WaitForExit();
         }
     }
 }

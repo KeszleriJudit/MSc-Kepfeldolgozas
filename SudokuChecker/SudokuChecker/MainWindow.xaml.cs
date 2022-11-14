@@ -1,8 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Drawing;
 using System.Drawing.Imaging;
+using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -16,11 +15,11 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
-using WpfApp.Functionalities;
-using WpfApp.MVVM;
 using Image = System.Windows.Controls.Image;
+using SudokuChecker.MVVM;
+using SudokuChecker.Functionalities;
 
-namespace WpfApp
+namespace SudokuChecker
 {
     public partial class MainWindow : Window
     {

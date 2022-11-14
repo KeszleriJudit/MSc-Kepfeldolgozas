@@ -8,13 +8,14 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using System.Windows;
-using WpfApp.WpfUiHelpers;
 using System.IO;
-using WpfApp.Functionalities;
 using System.Drawing;
 using System.Drawing.Imaging;
+using SudokuChecker.WpfUiHelpers;
+using SudokuChecker.Functionalities;
+using SudokuChecker.Functionalities.Extensions;
 
-namespace WpfApp.MVVM
+namespace SudokuChecker.MVVM
 {
     public class MainWindowViewModel : Bindable
     {

@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Input;
 
-namespace WpfApp.WpfUiHelpers
+namespace SudokuChecker.WpfUiHelpers
 {
     public class RelayCommand : ICommand
     {
