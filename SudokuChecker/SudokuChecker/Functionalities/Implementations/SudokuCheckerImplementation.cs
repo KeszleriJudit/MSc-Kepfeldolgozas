@@ -369,7 +369,7 @@ namespace SudokuChecker.Functionalities.Implementations
             Process p = new Process();
             p.StartInfo.FileName = @"C:\Windows\System32\cmd.exe";
             p.StartInfo.WorkingDirectory = $@"{Directory.GetCurrentDirectory()}";
-            p.StartInfo.Arguments = $@"/c python {fileName}";
+            p.StartInfo.Arguments = $@"/c python ../../../{fileName}";
             p.StartInfo.UseShellExecute = false;
             p.StartInfo.RedirectStandardOutput = true;
             p.StartInfo.CreateNoWindow = true;
