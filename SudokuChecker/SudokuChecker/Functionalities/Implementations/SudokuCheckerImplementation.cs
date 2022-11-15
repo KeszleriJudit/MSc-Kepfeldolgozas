@@ -27,11 +27,13 @@ namespace SudokuChecker.Functionalities.Implementations
         private ConcurrentDictionary<byte, byte> lookUpTableForNegate;
         private int imageWidth;
         private int imageHeight;
+        private int counter;
 
         public SudokuCheckerImplementation(Logger logger): base(ProgramFunction.SudokuChecker, logger)
         {
             this.lookUpTable = new ConcurrentDictionary<int, byte>();
             this.lookUpTableForNegate = new ConcurrentDictionary<byte, byte>();
+            this.counter = 0;
         }
 
         public Bitmap ExecuteFunction(Bitmap inputImage)
@@ -42,44 +44,20 @@ namespace SudokuChecker.Functionalities.Implementations
 
             this.imageWidth = inputImage.Width;
             this.imageHeight = inputImage.Height;
-            Bitmap outputImage = inputImage;
-
-            Mat inputMat = inputImage.ToMat();
-            Image<Bgra, byte> inputImg = inputMat.ToImage<Bgra, byte>();
-
-            try
-            {
-                var temp = inputImg.SmoothGaussian(5).Convert<Gray, byte>().ThresholdBinaryInv(new Gray(230), new Gray(250));
-
-                VectorOfVectorOfPoint contours = new VectorOfVectorOfPoint();
-                Mat m = new Mat();
-
-                CvInvoke.FindContours(temp, contours, m, RetrType.External, ChainApproxMethod.ChainApproxSimple);
-
-                for (int i = 0; i < contours.Size; i++)
-                {
-                    double perimeter = CvInvoke.ArcLength(contours[i], true);
-                    VectorOfPoint approx = new VectorOfPoint();
-                    CvInvoke.ApproxPolyDP(contours[i], approx, 0.04 * perimeter, true);
-
-                    CvInvoke.DrawContours(inputImg, contours, i, new MCvScalar(0, 0, 255), 2);
-
-                    outputImage = inputImg.ToBitmap();
-                }
-            }
-            catch (Exception e)
-            {
-                MessageBox.Show(e.Message);
-            }
-
-
-            //RunPythonScript("contours.py");
-
-            //Bitmap greyscaledImage = greyScaling(inputImage);
-            //Bitmap gausBlurredImage = gausBlur(greyscaledImage);
-            //Bitmap contrastStrechedImage = contrastStreching(gausBlurredImage);
+            
+            Bitmap greyscaledImage = greyScaling(inputImage);
+            Bitmap gausBlurredImage = gausBlur(greyscaledImage);
+            Bitmap contrastStrechedImage = contrastStreching(gausBlurredImage);
             //körbevágás sarokpont + éldetektor
+           
+            string name = $"C:/Users/Judit/Desktop/{this.counter}-sudoku.png";
+            contrastStrechedImage.Save(name, ImageFormat.Png);
 
+            RunPythonScript("contours.py");
+
+            string processedImagePath = $"C:/Users/Judit/Desktop/{this.counter}-sudoku-processed.png";
+            Bitmap processedImage = new Bitmap(processedImagePath);
+            this.counter++;
             /**
              * Code below is for the processed image to read the numbers
              */
@@ -103,7 +81,7 @@ namespace SudokuChecker.Functionalities.Implementations
             this.LogFunctionResult();
             this.ResetTimer();
 
-            return outputImage;
+            return processedImage;
         }
 
         private void FillLookUpTable()
@@ -398,19 +376,22 @@ namespace SudokuChecker.Functionalities.Implementations
         {
             
             Process p = new Process();
-            p.StartInfo.FileName = @"C:\Windows\System32\cmd.exe";
+            p.StartInfo.FileName = @"C:\Users\Judit\AppData\Local\Programs\Python\Python311\python.exe";
             p.StartInfo.WorkingDirectory = $@"{Directory.GetCurrentDirectory()}";
-            p.StartInfo.Arguments = $@"/c python ../../../{fileName}";
+            p.StartInfo.Arguments = $@"../../../{fileName} {this.counter}";
             p.StartInfo.UseShellExecute = false;
             p.StartInfo.RedirectStandardOutput = true;
+            p.StartInfo.RedirectStandardError = true;
             p.StartInfo.CreateNoWindow = true;
             p.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
 
             p.Start();
 
             string output = p.StandardOutput.ReadToEnd();
+            string error = p.StandardError.ReadToEnd();
 
             p.WaitForExit();
+            ;
         }
     }
 }
