@@ -17,6 +17,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows;
 
 namespace SudokuChecker.Functionalities.Implementations
 {
@@ -41,12 +42,42 @@ namespace SudokuChecker.Functionalities.Implementations
 
             this.imageWidth = inputImage.Width;
             this.imageHeight = inputImage.Height;
+            Bitmap outputImage = inputImage;
 
-            RunPythonScript("contours.py");
+            Mat inputMat = inputImage.ToMat();
+            Image<Bgra, byte> inputImg = inputMat.ToImage<Bgra, byte>();
 
-            Bitmap greyscaledImage = greyScaling(inputImage);
-            Bitmap gausBlurredImage = gausBlur(greyscaledImage);
-            Bitmap contrastStrechedImage = contrastStreching(gausBlurredImage);
+            try
+            {
+                var temp = inputImg.SmoothGaussian(5).Convert<Gray, byte>().ThresholdBinaryInv(new Gray(230), new Gray(250));
+
+                VectorOfVectorOfPoint contours = new VectorOfVectorOfPoint();
+                Mat m = new Mat();
+
+                CvInvoke.FindContours(temp, contours, m, RetrType.External, ChainApproxMethod.ChainApproxSimple);
+
+                for (int i = 0; i < contours.Size; i++)
+                {
+                    double perimeter = CvInvoke.ArcLength(contours[i], true);
+                    VectorOfPoint approx = new VectorOfPoint();
+                    CvInvoke.ApproxPolyDP(contours[i], approx, 0.04 * perimeter, true);
+
+                    CvInvoke.DrawContours(inputImg, contours, i, new MCvScalar(0, 0, 255), 2);
+
+                    outputImage = inputImg.ToBitmap();
+                }
+            }
+            catch (Exception e)
+            {
+                MessageBox.Show(e.Message);
+            }
+
+
+            //RunPythonScript("contours.py");
+
+            //Bitmap greyscaledImage = greyScaling(inputImage);
+            //Bitmap gausBlurredImage = gausBlur(greyscaledImage);
+            //Bitmap contrastStrechedImage = contrastStreching(gausBlurredImage);
             //körbevágás sarokpont + éldetektor
 
             /**
@@ -72,7 +103,7 @@ namespace SudokuChecker.Functionalities.Implementations
             this.LogFunctionResult();
             this.ResetTimer();
 
-            return contrastStrechedImage;
+            return outputImage;
         }
 
         private void FillLookUpTable()
