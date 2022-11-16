@@ -69,7 +69,7 @@ namespace SudokuChecker.Functionalities.Implementations
             Mat resizedImage = new Mat();
             CvInvoke.Resize(processedImage.ToMat(), resizedImage, new System.Drawing.Size(cellEdgeWidth * 9, cellEdgeHeight * 9));
             Bitmap resizedImageBitmap = resizedImage.ToBitmap();
-            
+
             List<Bitmap> units = new List<Bitmap>();
             for (int i = 0; i < resizedImageBitmap.Height; i += cellEdgeHeight)
             {
@@ -87,12 +87,12 @@ namespace SudokuChecker.Functionalities.Implementations
                     units.Add(unit);
                 }
             }
-            
+
 
             /**
              * Code below is for the processed image to read the numbers
              */
-            
+
             var Ocr = new IronTesseract();
             List<string> sudokuInput = new List<string>();
             // Hundreds of languages available 
@@ -100,51 +100,58 @@ namespace SudokuChecker.Functionalities.Implementations
             Ocr.Configuration.PageSegmentationMode = TesseractPageSegmentationMode.SingleChar;
             Ocr.Configuration.WhiteListCharacters = "123456789";
             Ocr.Configuration.TesseractVariables["load_system_dawg"] = false;
+            Ocr.Configuration.ReadBarCodes = false;
 
             for (int i = 0; i < units.Count; i++)
-                {
-                    var Input = new OcrInput(units[i]);
-                    Input.DeNoise();  //optional  
-                    //Input.Deskew();   //optional
-                    //Input.EnhanceResolution();
-                    //Input.Contrast();
-                    Input.Invert();
+            {
+                var Input = new OcrInput(units[i]);
+                //Input.DeNoise();  //optional  
+                Input.Deskew();   //optional
+                Input.EnhanceResolution();
+                Input.Contrast();
+                Input.Invert();
 
-                    try
-                    {
-                        IronOcr.OcrResult Result = Ocr.Read(Input);
-                        sudokuInput.Add(Result.Text);
-                        //logger.Log(Result.Text);
-                    }
-                    catch (Exception e)
+                try
+                {
+                    IronOcr.OcrResult Result = Ocr.Read(Input);
+                    if (Result.Text == "")
                     {
                         sudokuInput.Add("0");
-                        MessageBox.Show(e.Message);
-                        logger.Log("Failed to read");
                     }
-
+                    else
+                    {
+                        sudokuInput.Add(Result.Text);
+                    }
                 }
-            
+                catch (Exception e)
+                {
+                    sudokuInput.Add("0");
+                    MessageBox.Show(e.Message);
+                    logger.Log("Failed to read");
+                }
+
+            }
+
             int counter = 0;
             string line = "";
             for (int i = 0; i < sudokuInput.Count; i++)
             {
-                if (counter <9)
-                {
-                    line += sudokuInput[i] + " ";
-                    counter++;
-                }
-                else
+                line += sudokuInput[i] + " ";
+                if (counter == 8)
                 {
                     logger.Log(line);
                     counter = 0;
                     line = "";
                 }
-                
+                else
+                {
+                    counter++;
+                }
             }
-            
-                Console.WriteLine("Finished");
-            
+            //logger.Log(line);
+
+            Console.WriteLine("Finished");
+
 
             this.StopTimer();
             this.LogFunctionResult();
