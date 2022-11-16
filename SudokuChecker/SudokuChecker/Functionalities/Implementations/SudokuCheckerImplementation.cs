@@ -24,7 +24,6 @@ namespace SudokuChecker.Functionalities.Implementations
     public class SudokuCheckerImplementation : FunctionBase, FunctionInterface
     {
         private ConcurrentDictionary<int, byte> lookUpTable;
-        private ConcurrentDictionary<byte, byte> lookUpTableForNegate;
         private int imageWidth;
         private int imageHeight;
         private int counter;
@@ -32,7 +31,6 @@ namespace SudokuChecker.Functionalities.Implementations
         public SudokuCheckerImplementation(Logger logger) : base(ProgramFunction.SudokuChecker, logger)
         {
             this.lookUpTable = new ConcurrentDictionary<int, byte>();
-            this.lookUpTableForNegate = new ConcurrentDictionary<byte, byte>();
             this.counter = 0;
         }
 
@@ -148,10 +146,8 @@ namespace SudokuChecker.Functionalities.Implementations
                     counter++;
                 }
             }
-            //logger.Log(line);
 
             Console.WriteLine("Finished");
-
 
             this.StopTimer();
             this.LogFunctionResult();
@@ -385,67 +381,6 @@ namespace SudokuChecker.Functionalities.Implementations
             newImage.UnlockBits(destData);
 
             return newImage;
-        }
-
-        private Bitmap negateImage(Bitmap inputImage)
-        {
-            Bitmap newImage = new Bitmap(this.imageWidth, this.imageHeight);
-            this.lookUpTableForNegate.Clear();
-            this.FillLookUpTableForNegate();
-
-            unsafe
-            {
-                BitmapData inputBitmapData = inputImage.LockBits(new Rectangle(0, 0, this.imageWidth, this.imageHeight), ImageLockMode.ReadOnly, inputImage.PixelFormat);
-                BitmapData outputBitmapData = newImage.LockBits(new Rectangle(0, 0, this.imageWidth, this.imageHeight), ImageLockMode.WriteOnly, inputImage.PixelFormat);
-
-                int bytesPerPixel = Bitmap.GetPixelFormatSize(inputImage.PixelFormat) / 8;
-                int widthInBytes = this.imageWidth * bytesPerPixel;
-                byte* inputPtrFirstPixel = (byte*)inputBitmapData.Scan0;
-                byte* outputPtrFirstPixel = (byte*)outputBitmapData.Scan0;
-
-                /*Parallel.For(0, this.imageHeight, y =>
-                {
-                    byte* inputCurrentLine = inputPtrFirstPixel + (y * inputBitmapData.Stride);
-                    byte* outputCurrentLine = outputPtrFirstPixel + (y * outputBitmapData.Stride);
-                    for (int x = 0; x < widthInBytes; x = x + bytesPerPixel)
-                    {
-                        byte oldBlue = inputCurrentLine[x];
-                        byte oldGreen = inputCurrentLine[x + 1];
-                        byte oldRed = inputCurrentLine[x + 2];
-
-                        outputCurrentLine[x] = this.lookUpTableForNegate[oldBlue];
-                        outputCurrentLine[x + 1] = this.lookUpTableForNegate[oldGreen];
-                        outputCurrentLine[x + 2] = this.lookUpTableForNegate[oldRed];
-                    }
-                });*/
-                for (int y = 0; y < this.imageHeight; y++)
-                {
-                    byte* inputCurrentLine = inputPtrFirstPixel + (y * inputBitmapData.Stride);
-                    byte* outputCurrentLine = outputPtrFirstPixel + (y * outputBitmapData.Stride);
-                    for (int x = 0; x < widthInBytes; x = x + bytesPerPixel)
-                    {
-                        byte oldBlue = inputCurrentLine[x];
-                        byte oldGreen = inputCurrentLine[x + 1];
-                        byte oldRed = inputCurrentLine[x + 2];
-
-                        outputCurrentLine[x] = this.lookUpTableForNegate[oldBlue];
-                        outputCurrentLine[x + 1] = this.lookUpTableForNegate[oldGreen];
-                        outputCurrentLine[x + 2] = this.lookUpTableForNegate[oldRed];
-                    }
-                }
-                inputImage.UnlockBits(inputBitmapData);
-                newImage.UnlockBits(outputBitmapData);
-            }
-            return newImage;
-        }
-
-        private void FillLookUpTableForNegate()
-        {
-            for (int i = 0; i < 256; i++)
-            {
-                int value = 255 - i;
-                this.lookUpTableForNegate.TryAdd((byte)i, (byte)value);
-            }
         }
 
         public void RunPythonScript(string fileName)
