@@ -29,7 +29,7 @@ namespace SudokuChecker.Functionalities.Implementations
         private int imageHeight;
         private int counter;
 
-        public SudokuCheckerImplementation(Logger logger): base(ProgramFunction.SudokuChecker, logger)
+        public SudokuCheckerImplementation(Logger logger) : base(ProgramFunction.SudokuChecker, logger)
         {
             this.lookUpTable = new ConcurrentDictionary<int, byte>();
             this.lookUpTableForNegate = new ConcurrentDictionary<byte, byte>();
@@ -44,12 +44,12 @@ namespace SudokuChecker.Functionalities.Implementations
 
             this.imageWidth = inputImage.Width;
             this.imageHeight = inputImage.Height;
-            
+
             Bitmap greyscaledImage = greyScaling(inputImage);
             Bitmap gausBlurredImage = gausBlur(greyscaledImage);
             Bitmap contrastStrechedImage = contrastStreching(gausBlurredImage);
             //körbevágás sarokpont + éldetektor
-           
+
             string name = $"C:/Users/Judit/Desktop/{this.counter}-sudoku.png";
             contrastStrechedImage.Save(name, ImageFormat.Png);
 
@@ -58,30 +58,99 @@ namespace SudokuChecker.Functionalities.Implementations
             string processedImagePath = $"C:/Users/Judit/Desktop/{this.counter}-sudoku-processed.png";
             Bitmap processedImage = new Bitmap(processedImagePath);
             this.counter++;
+
+            int processedImageHeight = processedImage.Height;
+            int processedImageWidth = processedImage.Width;
+            double heightValue = processedImageHeight / 9;
+            double widthValue = processedImageWidth / 9;
+            int cellEdgeHeight = (int)Math.Floor(heightValue);
+            int cellEdgeWidth = (int)Math.Floor(widthValue);
+
+            Mat resizedImage = new Mat();
+            CvInvoke.Resize(processedImage.ToMat(), resizedImage, new System.Drawing.Size(cellEdgeWidth * 9, cellEdgeHeight * 9));
+            Bitmap resizedImageBitmap = resizedImage.ToBitmap();
+
+            List<Bitmap> units = new List<Bitmap>();
+            for (int i = 0; i < resizedImageBitmap.Height; i += cellEdgeHeight)
+            {
+                for (int j = 0; j < resizedImageBitmap.Width; j += cellEdgeWidth)
+                {
+                    Bitmap unit = new Bitmap(cellEdgeWidth, cellEdgeHeight);
+                    for (int k = 0; k < cellEdgeHeight; k++)
+                    {
+                        for (int l = 0; l < cellEdgeWidth; l++)
+                        {
+                            Color pixel = resizedImageBitmap.GetPixel(j + l, i + k);
+                            unit.SetPixel(l, k, pixel);
+                        }
+                    }
+                    units.Add(unit);
+                }
+            }
+
+
             /**
              * Code below is for the processed image to read the numbers
              */
 
-            /*var Ocr = new IronTesseract();
+            var Ocr = new IronTesseract();
+            List<string> sudokuInput = new List<string>();
             // Hundreds of languages available 
-            Ocr.Language = OcrLanguage.English;
-            using (var Input = new OcrInput())
+            //Ocr.Language = OcrLanguage.English;
+            Ocr.Configuration.PageSegmentationMode = TesseractPageSegmentationMode.SingleChar;
+            Ocr.Configuration.WhiteListCharacters = "123456789";
+            Ocr.Configuration.TesseractVariables["load_system_dawg"] = false;
+
+            for (int i = 0; i < units.Count; i++)
+                {
+                    var Input = new OcrInput(units[i]);
+                    Input.DeNoise();  //optional  
+                    //Input.Deskew();   //optional
+                    //Input.EnhanceResolution();
+                    //Input.Contrast();
+                    Input.Invert();
+
+                    try
+                    {
+                        IronOcr.OcrResult Result = Ocr.Read(Input);
+                        sudokuInput.Add(Result.Text);
+                        //logger.Log(Result.Text);
+                    }
+                    catch (Exception e)
+                    {
+                        sudokuInput.Add("0");
+                        MessageBox.Show(e.Message);
+                        logger.Log("Failed to read");
+                    }
+
+                }
+
+            int counter = 0;
+            string line = "";
+            for (int i = 0; i < sudokuInput.Count; i++)
             {
-                Input.AddImage("C:\\Users\\Judit\\Pictures\\Sudoku\\Image5.jpg");
-                // Input.DeNoise();  optional  
-                // Input.Deskew();   optional  
-                IronOcr.OcrResult Result = Ocr.Read(Input);
-                String result = Result.Text;
-                Console.WriteLine(Result.Text);
-                // Explore the OcrResult using IntelliSense
+                if (counter <9)
+                {
+                    line += sudokuInput[i] + " ";
+                    counter++;
+                }
+                else
+                {
+                    logger.Log(line);
+                    counter = 0;
+                    line = "";
+                }
+                
+            }
+            
                 Console.WriteLine("Finished");
-            }*/
+            
 
             this.StopTimer();
             this.LogFunctionResult();
             this.ResetTimer();
 
-            return processedImage;
+            return units[20];
         }
 
         private void FillLookUpTable()
@@ -374,7 +443,7 @@ namespace SudokuChecker.Functionalities.Implementations
 
         public void RunPythonScript(string fileName)
         {
-            
+
             Process p = new Process();
             p.StartInfo.FileName = @"C:\Users\Judit\AppData\Local\Programs\Python\Python311\python.exe";
             p.StartInfo.WorkingDirectory = $@"{Directory.GetCurrentDirectory()}";
@@ -391,7 +460,6 @@ namespace SudokuChecker.Functionalities.Implementations
             string error = p.StandardError.ReadToEnd();
 
             p.WaitForExit();
-            ;
         }
     }
 }

@@ -54,8 +54,8 @@ if __name__ == '__main__':
         pts2 = numpy.float32([[0, 0],[width, 0], [0, height],[width, height]])
         matrix = cv2.getPerspectiveTransform(pts1, pts2)
         imgWarpColored = cv2.warpPerspective(img, matrix, (width, height))
-        imgDetectedDigits = imgBlank.copy()
         imgWarpColored = cv2.cvtColor(imgWarpColored,cv2.COLOR_BGR2GRAY)
+        #imgInverted = cv2.bitwise_not(cv2.adaptiveThreshold(imgWarpColored, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 101, 1))
 
     cv2.imwrite("C:/Users/Judit/Desktop/{}-sudoku-processed.png".format(counter), imgWarpColored)
 
