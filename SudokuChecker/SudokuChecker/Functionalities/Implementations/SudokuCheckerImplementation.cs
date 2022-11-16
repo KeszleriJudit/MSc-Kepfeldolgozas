@@ -69,7 +69,7 @@ namespace SudokuChecker.Functionalities.Implementations
             Mat resizedImage = new Mat();
             CvInvoke.Resize(processedImage.ToMat(), resizedImage, new System.Drawing.Size(cellEdgeWidth * 9, cellEdgeHeight * 9));
             Bitmap resizedImageBitmap = resizedImage.ToBitmap();
-
+            
             List<Bitmap> units = new List<Bitmap>();
             for (int i = 0; i < resizedImageBitmap.Height; i += cellEdgeHeight)
             {
@@ -87,12 +87,12 @@ namespace SudokuChecker.Functionalities.Implementations
                     units.Add(unit);
                 }
             }
-
+            
 
             /**
              * Code below is for the processed image to read the numbers
              */
-
+            
             var Ocr = new IronTesseract();
             List<string> sudokuInput = new List<string>();
             // Hundreds of languages available 
@@ -124,7 +124,7 @@ namespace SudokuChecker.Functionalities.Implementations
                     }
 
                 }
-
+            
             int counter = 0;
             string line = "";
             for (int i = 0; i < sudokuInput.Count; i++)
@@ -150,7 +150,7 @@ namespace SudokuChecker.Functionalities.Implementations
             this.LogFunctionResult();
             this.ResetTimer();
 
-            return units[20];
+            return resizedImageBitmap;
         }
 
         private void FillLookUpTable()

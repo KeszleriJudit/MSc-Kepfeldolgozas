@@ -26,7 +26,7 @@ if __name__ == '__main__':
     imgBigContour = img.copy()
     contours, hierarchy = cv2.findContours(imgThreshold, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     cv2.drawContours(imgContours, contours, -1, (0, 255, 0), 3)
-
+    
     biggest = numpy.array([])
     maxArea = 0
     for i in contours:
@@ -57,6 +57,22 @@ if __name__ == '__main__':
         imgWarpColored = cv2.cvtColor(imgWarpColored,cv2.COLOR_BGR2GRAY)
         #imgInverted = cv2.bitwise_not(cv2.adaptiveThreshold(imgWarpColored, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 101, 1))
 
+        edges = cv2.Canny(imgWarpColored,50,150,apertureSize=3)
+        lines_list =[]
+        lines = cv2.HoughLinesP(
+                    edges,
+                    1,
+                    numpy.pi/180,
+                    threshold=100,
+                    minLineLength=100,
+                    maxLineGap=15 
+                    )
+        
+        for points in lines:
+            x1,y1,x2,y2=points[0]
+            cv2.line(imgWarpColored,(x1,y1),(x2,y2),(255,255,255),5)
+            lines_list.append([(x1,y1),(x2,y2)])
+        
     cv2.imwrite("C:/Users/Judit/Desktop/{}-sudoku-processed.png".format(counter), imgWarpColored)
 
     print("Finish")
