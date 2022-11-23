@@ -48,12 +48,12 @@ namespace SudokuChecker.Functionalities.Implementations
             Bitmap contrastStrechedImage = contrastStreching(gausBlurredImage);
             //körbevágás sarokpont + éldetektor
 
-            string name = $"C:/Users/Judit/Desktop/{this.counter}-sudoku.png";
+            string name = $"C:/Users/Judit/Desktop/SudokuSolver/{this.counter}-sudoku.png";
             contrastStrechedImage.Save(name, ImageFormat.Png);
 
-            RunPythonScript("contours.py");
+            RunPythonScript("contours.py", this.counter.ToString());
 
-            string processedImagePath = $"C:/Users/Judit/Desktop/{this.counter}-sudoku-processed.png";
+            string processedImagePath = $"C:/Users/Judit/Desktop/SudokuSolver/{this.counter}-sudoku-processed.png";
             Bitmap processedImage = new Bitmap(processedImagePath);
             this.counter++;
 
@@ -67,6 +67,8 @@ namespace SudokuChecker.Functionalities.Implementations
             Mat resizedImage = new Mat();
             CvInvoke.Resize(processedImage.ToMat(), resizedImage, new System.Drawing.Size(cellEdgeWidth * 9, cellEdgeHeight * 9));
             Bitmap resizedImageBitmap = resizedImage.ToBitmap();
+            int row = 0;
+            int column = 0;
 
             List<Bitmap> units = new List<Bitmap>();
             for (int i = 0; i < resizedImageBitmap.Height; i += cellEdgeHeight)
@@ -83,7 +85,11 @@ namespace SudokuChecker.Functionalities.Implementations
                         }
                     }
                     units.Add(unit);
+                    unit.Save($"C:/Users/Judit/Desktop/SudokuSolver/units/unit{row}{column}.png", ImageFormat.Png);
+                    column++;
                 }
+                row++;
+                column = 0;
             }
 
 
@@ -93,8 +99,6 @@ namespace SudokuChecker.Functionalities.Implementations
 
             var Ocr = new IronTesseract();
             List<string> sudokuInput = new List<string>();
-            // Hundreds of languages available 
-            //Ocr.Language = OcrLanguage.English;
             Ocr.Configuration.PageSegmentationMode = TesseractPageSegmentationMode.SingleChar;
             Ocr.Configuration.WhiteListCharacters = "123456789";
             Ocr.Configuration.TesseractVariables["load_system_dawg"] = false;
@@ -103,12 +107,11 @@ namespace SudokuChecker.Functionalities.Implementations
             for (int i = 0; i < units.Count; i++)
             {
                 var Input = new OcrInput(units[i]);
-                //Input.DeNoise();  //optional  
-                Input.Deskew();   //optional
-                Input.EnhanceResolution();
-                Input.Contrast();
+                Input.Deskew();
+                Input.ToGrayScale();
                 Input.Invert();
-
+                Input.Binarize();
+                Input.SaveAsImages($"C:/Users/Judit/Desktop/SudokuSolver/AfterOcr/afterOcr{i}");
                 try
                 {
                     IronOcr.OcrResult Result = Ocr.Read(Input);
@@ -132,9 +135,12 @@ namespace SudokuChecker.Functionalities.Implementations
 
             int counter = 0;
             string line = "";
+            string sudokuTable = "";
+
             for (int i = 0; i < sudokuInput.Count; i++)
             {
                 line += sudokuInput[i] + " ";
+                sudokuTable += sudokuInput[i];
                 if (counter == 8)
                 {
                     logger.Log(line);
@@ -147,6 +153,7 @@ namespace SudokuChecker.Functionalities.Implementations
                 }
             }
 
+            RunPythonScript("solver.py", sudokuTable);
             Console.WriteLine("Finished");
 
             this.StopTimer();
@@ -383,13 +390,13 @@ namespace SudokuChecker.Functionalities.Implementations
             return newImage;
         }
 
-        public void RunPythonScript(string fileName)
+        public void RunPythonScript(string fileName, string parameters)
         {
 
             Process p = new Process();
             p.StartInfo.FileName = @"C:\Users\Judit\AppData\Local\Programs\Python\Python311\python.exe";
             p.StartInfo.WorkingDirectory = $@"{Directory.GetCurrentDirectory()}";
-            p.StartInfo.Arguments = $@"../../../{fileName} {this.counter}";
+            p.StartInfo.Arguments = $@"../../../{fileName} {parameters}";
             p.StartInfo.UseShellExecute = false;
             p.StartInfo.RedirectStandardOutput = true;
             p.StartInfo.RedirectStandardError = true;

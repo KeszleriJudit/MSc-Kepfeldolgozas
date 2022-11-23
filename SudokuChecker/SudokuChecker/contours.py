@@ -7,11 +7,8 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 if __name__ == '__main__':
 
-    print("Hello World!")
     counter = sys.argv[1]
-    print(counter)
-    pathImage = "C:/Users/Judit/Desktop/{}-sudoku.png".format(counter)
-    print(pathImage)
+    pathImage = "C:/Users/Judit/Desktop/SudokuSolver/{}-sudoku.png".format(counter)
     assert os.path.exists(pathImage)
     
     img = cv2.imread(pathImage)
@@ -55,7 +52,6 @@ if __name__ == '__main__':
         matrix = cv2.getPerspectiveTransform(pts1, pts2)
         imgWarpColored = cv2.warpPerspective(img, matrix, (width, height))
         imgWarpColored = cv2.cvtColor(imgWarpColored,cv2.COLOR_BGR2GRAY)
-        #imgInverted = cv2.bitwise_not(cv2.adaptiveThreshold(imgWarpColored, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 101, 1))
 
         edges = cv2.Canny(imgWarpColored,50,150,apertureSize=3)
         lines_list =[]
@@ -73,6 +69,4 @@ if __name__ == '__main__':
             cv2.line(imgWarpColored,(x1,y1),(x2,y2),(255,255,255),5)
             lines_list.append([(x1,y1),(x2,y2)])
         
-    cv2.imwrite("C:/Users/Judit/Desktop/{}-sudoku-processed.png".format(counter), imgWarpColored)
-
-    print("Finish")
+    cv2.imwrite("C:/Users/Judit/Desktop/SudokuSolver/{}-sudoku-processed.png".format(counter), imgWarpColored)
